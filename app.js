@@ -7,13 +7,12 @@ const cartItems = document.querySelector(".cart-items")
 const cartTotal = document.querySelector(".cart-total")
 const cartContent = document.querySelector(".cart-content")
 const productsDOM = document.querySelector(".products-center")
-
 const product = document.querySelector(".product")
-const testBtn = document.querySelector(".test")
-const div = document.querySelector(".div")
+
 
 // cart
-let cart = []
+let cart = [];
+let productButtons = [];
 
 async function getProducts() {
     try {
@@ -98,13 +97,13 @@ function addCartItem(cartItem) {
         <img src="${cartItem.image}" alt="product" height="75px" width="75px">
             <div>
                 <h4>${cartItem.title}</h4>
-                <h5>${cartItem.price}</h5>
+                <h5>$${cartItem.price}</h5>
                 <span class="remove-item" data-id=${cartItem.id}>remove</span>
             </div>
             <div>
-                <i class="fas fa-chevron-up"></i>
+                <i class="fas fa-chevron-up" data-id=${cartItem.id}></i>
                 <p class="item-amount">${cartItem.amount}</p>
-                <i class="fas fa-chevron-down"></i>
+                <i class="fas fa-chevron-down" data-id=${cartItem.id}></i>
             </div>`
     cartContent.appendChild(div)
 }
@@ -124,25 +123,28 @@ function populateCart(cart) {
     cart.forEach((item) => addCartItem(item))
 }
 
-function menuBtnsHandler(event) {
-    let btn = event.target.closest(".bag-btn")
-        if(btn.disabled || !btn) return
-        let id = btn.dataset.id
+function getMenuBtns() {
+    const buttons = [...document.querySelectorAll(".bag-btn")]
+    productButtons = buttons
+    buttons.forEach(button => {
+        let id = button.dataset.id
         let inCart = cart.find(product => product.id == id)
         if(inCart){
-            event.target.innerHTML = "In Cart";
-            btn.disabled = true;
-            return
+            button.innerText = "in Cart";
+            button.disabled = true
         }
-        event.target.innerHTML = "In Cart";
-        btn.disabled = true;
-
-        let cartItem = {...getProduct(id), amount: 1}
-        cart = [...cart, cartItem]
-        saveCart(cart)
-        //add product to the cart
-        setCartValues(cart)
-        addCartItem(cartItem)
+        button.addEventListener('click', () =>{
+            button.innerText = "in Cart";
+            button.disabled = true;
+            let cartItem = {...getProduct(id), amount: 1}
+            cart = [...cart, cartItem]
+            saveCart(cart)
+            //add product to the cart
+            setCartValues(cart)
+            addCartItem(cartItem)
+        })
+        
+    })
 }
 
 function setupAPP() {
@@ -155,7 +157,36 @@ function setupAPP() {
 }
 
 function cartLogic() {
+    //close the cart if you click on the overlay
+    cartOverlay.addEventListener("click", (event) => {
+        if(event.target.classList.contains("cart-overlay")) {
+            hideCart()
+        }
+    })
     clearCartBtn.addEventListener("click", clearCartBtnHandler)
+    cartContent.addEventListener("click", event => {
+        let id = event.target.dataset.id
+        if(event.target.classList.contains("remove-item")) {
+            //remove item from the cart
+            removeItem(id)
+            //remove item from the DOM
+            cartContent.removeChild(event.target.parentElement.parentElement)
+        }else if(event.target.classList.contains("fa-chevron-up")) {
+            let tempItem = cart.find(item => item.id == id)
+            tempItem.amount += 1
+            console.log(tempItem.amount)
+            saveCart(cart)
+            setCartValues(cart)
+            event.target.nextElementSibling.innerText = tempItem.amount
+        }else if(event.target.classList.contains("fa-chevron-down")) {
+            let tempItem = cart.find(item => item.id == id)
+            if(tempItem.amount <= 0) return
+            tempItem.amount -= 1
+            saveCart(cart)
+            setCartValues(cart)
+            event.target.previousElementSibling.innerText = tempItem.amount
+        }
+    })
 }
 
 function clearCartBtnHandler() {
@@ -168,9 +199,15 @@ function clearCartBtnHandler() {
 
 function removeItem(id) {
     cart = cart.filter(item => item.id != id)
-    console.log(cart)
     setCartValues(cart)
     saveCart(cart)
+    let btn = getButton(id)
+    btn.disabled = false
+    btn.innerHTML = `<i class="fas fa-shopping-cart">add to bag</i>`
+}
+
+function getButton(id) {
+    return productButtons.find(button => button.dataset.id == id)
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -181,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         saveProducts(data)
     })
     .then(() => {
-        productsDOM.addEventListener("click", menuBtnsHandler)
+        getMenuBtns()
         cartLogic()
     })
 
